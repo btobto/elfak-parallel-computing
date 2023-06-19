@@ -1,5 +1,6 @@
 {
   "files.associations": {
+    ".cu": "plaintext",
     "limits": "cpp",
     "utility": "cpp",
     "algorithm": "cpp",
@@ -46,6 +47,11 @@
     "xstring": "cpp",
     "xtr1common": "cpp",
     "xtree": "cpp",
-    "xutility": "cpp"
+    "xutility": "cpp",
+    "cstdarg": "cpp",
+    "functional": "cpp",
+    "list": "cpp",
+    "unordered_map": "cpp",
+    "xhash": "cpp"
   }
 }

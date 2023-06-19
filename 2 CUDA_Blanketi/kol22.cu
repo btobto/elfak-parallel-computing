@@ -1,4 +1,5 @@
 #include <cuda.h>
+#include <cuda_runtime.h>
 
 #define p 0.3f
 #define BLOCK_NUM 256
@@ -6,8 +7,8 @@
 
 __global__ void kernel(int *a, int *b, int *c, int n)
 {
-	__shared__ sh_a[BLOCK_SIZE];
-	__shared__ sh_b[BLOCK_SIZE];
+	__shared__ int sh_a[BLOCK_SIZE];
+	__shared__ int sh_b[BLOCK_SIZE];
 
 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -28,11 +29,11 @@ __global__ void kernel(int *a, int *b, int *c, int n)
 			}
 			else if (threadIdx.x < blockDim.x - 1)
 			{
-				res = ...
+				// res = ...
 			}
 			else
 			{
-				res = ...
+				// res = ...
 			}
 
 			c[tid] = res;
@@ -54,7 +55,7 @@ int main()
 
 	a = new int[n];
 	b = new int[n];
-	c = new int[n - 2];
+	c = new float[n - 2];
 
 	cudaMalloc((void **)&d_a, n * sizeof(int));
 	cudaMalloc((void **)&d_b, n * sizeof(int));

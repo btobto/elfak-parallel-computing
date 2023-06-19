@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "nvcc",
+            "args": [
+                "${file}",
+                "-o",
+                "${fileBasenameNoExtension}",
+                // "-I../../../Common",
+                "-ccbin",
+                "'C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\VC\\Tools\\MSVC\\14.10.25017\bin\\HostX64\\x64'"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
+            "label": "build and run",
+            "type": "shell",
+            "command": "./${fileBasenameNoExtension}",
+            "group": "build",
+            "dependsOn": [
+                "build"
+            ]
+        }
+    ]
+}
