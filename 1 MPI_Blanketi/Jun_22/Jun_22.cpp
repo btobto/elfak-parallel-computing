@@ -22,12 +22,16 @@ bool check_result(int* a, int* b, int* res, int n) {
 		}
 	}
 
+	bool match = true;
 	for (int i = 0; i < n * n; i++) {
-		if (local_res[i] != res[i]) return false;
+		if (local_res[i] != res[i]) {
+			match = false;
+			break;
+		}
 	}
 
 	delete[] local_res;
-	return true;
+	return match;
 }
 
 int main(int argc, char** argv)
@@ -144,6 +148,8 @@ int main(int argc, char** argv)
 	delete[] c;
 	delete[] tile_a;
 	delete[] tile_b;
+	delete[] rows_a;
+	delete[] cols_b;
 	delete[] partial_c;
 	delete[] rows_c;
 

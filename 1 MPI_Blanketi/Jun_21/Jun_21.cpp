@@ -1,149 +1,163 @@
 #include <mpi.h>
-#include <stdio.h>
-#include <math.h>
-#include <stdlib.h>
-
-/*
-	Ne radi
-*/
+#include <iostream>
+#include <limits>
 
 #define POD_A true
-#define MASTER 0
 
-bool check_result(int* matrix, int* vector, int* result, int n) {
+void print_matrix(int* mat, int n, int m) {
 	for (int i = 0; i < n; i++) {
-		int val = 0;
-		for (int j = 0; j < n; j++) {
-			val += matrix[i * n + j] * vector[j];
-			if (val != result[i]) return false;
+		for (int j = 0; j < m; j++) {
+			std::cout << mat[i * m + j] << "\t";
 		}
+		std::cout << "\n";
 	}
+	std::cout << "\n";
+}
+
+bool check_result(int* a, int* b, int* res, int n) {
+	for (int i = 0; i < n; i++) {
+		int el = 0;
+		for (int j = 0; j < n; j++) {
+			el += a[i * n + j] * b[j];
+		}
+
+		if (res[i] != el) return false;
+	}
+
 	return true;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 	int rank, size;
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+	constexpr int root = 0;
+	constexpr int k = 8;
 	int q = sqrt(size);
-	int k = q * 2;
-	int s = k / q; // 2
+	int s = k / q;
 
-	if (q * q != size) exit(1);
+	if (q * q != size || s * q != k) exit(1);
 
-	int* A = new int[k * k], * b = new int[k], * c = new int[k];
-	int* local_A = new int[s * s], * local_b = new int[s], * local_c = new int[s];
+	int* a = new int[k * k];
+	int* b = new int[k];
+	int* c = new int[k * k];
+	int* tile_a = new int[s * s];
+	int* partial_b = new int[s];
+	int* partial_c = new int[s];
+	int* partial_c_sum = new int[s];
 
-	if (rank == MASTER) {
+
+	if (rank == root) {
 		for (int i = 0; i < k * k; i++) {
-			A[i] = i;
+			a[i] = i;
 		}
 
-		printf("MATRIX A:\n");
-		for (int i = 0; i < k; i++) {
-			for (int j = 0; j < k; j++) {
-				printf("%d\t", A[i * k + j]);
-			}
-			printf("\n");
-		}
-		printf("\n");
-
-		printf("VECTOR B:\n");
 		for (int i = 0; i < k; i++) {
 			b[i] = i;
-			printf("%d\t", b[i]);
 		}
-		printf("\n\n");
+
+		//std::cout << "A:\n";
+		//print_matrix(a, k, k);
+		//
+		//std::cout << "B:\n";
+		//print_matrix(b, 1, k);
 	}
 
 	MPI_Datatype vec_type;
-	MPI_Type_vector(s, s, (q - 1) * k, MPI_INT, &vec_type);
+	MPI_Type_vector(s, s, q * k, MPI_INT, &vec_type);
 
-	#if POD_A
-		MPI_Type_commit(&vec_type);
+#if POD_A
+	MPI_Type_commit(&vec_type);
 
-		if (rank == MASTER) {
-			MPI_Request req;
-
-			for (int i = 0; i < size; i++) {
-				MPI_Isend(&A[i * s], 1, vec_type, i, 0, MPI_COMM_WORLD, &req);
+	if (rank == root) {
+		int row = (rank / q) * s, col = (rank % q) * s;
+		for (int i = 0; i < s; i++) {
+			for (int j = 0; j < s; j++) {
+				tile_a[i * s + j] = a[(row + i * q) * k + (col + j)];
 			}
 		}
 
-		MPI_Recv(local_A, s * s, MPI_INT, MASTER, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	#else 
-		MPI_Datatype vec_extended_type;
-		MPI_Type_create_resized(vec_type, 0, s * sizeof(int), &vec_extended_type);
-		MPI_Type_commit(&vec_extended_type);
-
-		MPI_Scatter(A, 1, vec_extended_type, local_A, s * s, MPI_INT, MASTER, MPI_COMM_WORLD);
-	#endif
-
-	MPI_Comm col_comm, row_comm;
-	int col_rank, row_rank;
-	MPI_Comm_split(MPI_COMM_WORLD, rank / q, 0, &row_comm);
-	MPI_Comm_split(MPI_COMM_WORLD, rank % q, 0, &col_comm);
-	MPI_Comm_rank(row_comm, &row_rank);
-	MPI_Comm_rank(col_comm, &col_rank);
-
-	if (col_rank == 0) {
-		MPI_Scatter(b, s, MPI_INT, local_b, s, MPI_INT, 0, row_comm);
+		for (int i = 1; i < size; i++) {
+			MPI_Send(&a[i * s], 1, vec_type, i, 0, MPI_COMM_WORLD);
+		}
 	}
+	else {
+		MPI_Recv(tile_a, s * s, MPI_INT, root, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	}
+#else
+	MPI_Datatype vec_extended_type;
+	MPI_Type_create_resized(vec_type, 0, s * sizeof(int), &vec_extended_type);
+	MPI_Type_commit(&vec_extended_type);
 
-	MPI_Bcast(local_b, s, MPI_INT, 0, col_comm);
+	MPI_Scatter(a, 1, vec_extended_type, a_tile, s * s, MPI_INT, root, MPI_COMM_WORLD);
+#endif
+
+	//std::cout << "Rank: " << rank << "\n";
+	//print_matrix(a_tile, s, s);
+
+	MPI_Comm comm_row, comm_col;
+	int rank_row, rank_col;
+	MPI_Comm_split(MPI_COMM_WORLD, rank / q, rank % q, &comm_row);
+	MPI_Comm_split(MPI_COMM_WORLD, rank % q, rank / q, &comm_col);
+	MPI_Comm_rank(comm_row, &rank_row);
+	MPI_Comm_rank(comm_col, &rank_col);
+
+	if (rank_col == 0) {
+		MPI_Scatter(b, s, MPI_INT, partial_b, s, MPI_INT, root, comm_row);
+	}
+	MPI_Bcast(partial_b, s, MPI_INT, root, comm_col);
 
 	struct {
-		int min;
+		int val;
 		int rank;
-	} min_local{ local_A[0], rank }, min_global{};
+	} local_min{ tile_a[0], rank }, global_min;
 
-	min_local.min = local_A[0];
+	for (int i = 1; i < s * s; i++) {
+		if (tile_a[i] < local_min.val) local_min.val = tile_a[i];
+	}
+
 	for (int i = 0; i < s; i++) {
-		local_c[i] = 0;
+		partial_c[i] = 0;
 		for (int j = 0; j < s; j++) {
-			int index = i * s + j;
-			local_c[i] += local_A[index] * local_b[j];
-
-			if (local_A[index] < min_local.min) min_local.min = local_A[index];
+			partial_c[i] += tile_a[i * s + j] * partial_b[j];
 		}
 	}
 
-	MPI_Reduce(&min_local, &min_global, 1, MPI_2INT, MPI_MINLOC, MASTER, MPI_COMM_WORLD);
-	MPI_Bcast(&min_global, 1, MPI_2INT, MASTER, MPI_COMM_WORLD);
+	MPI_Reduce(&local_min, &global_min, 1, MPI_2INT, MPI_MINLOC, root, MPI_COMM_WORLD);
+	MPI_Bcast(&global_min, 1, MPI_2INT, root, MPI_COMM_WORLD);
 
-	int* partial_res = new int[s], * res = new int[k];
-	MPI_Reduce(local_c, partial_res, s, MPI_INT, MPI_SUM, min_global.rank % q, row_comm);
+	//if (rank == 8) {
+	//	std::cout << "Rank: " << global_min.rank << ", Value: " << global_min.val << "\n";
+	//}
 
-	if (min_global.rank % q == col_rank) {
-		MPI_Datatype tmp_vec, rearranged_vec_type;
-		MPI_Type_vector(q, 1, s, MPI_INT, &tmp_vec);
-		MPI_Type_create_resized(tmp_vec, 0, sizeof(int), &rearranged_vec_type);
-		MPI_Type_commit(&rearranged_vec_type);
+	MPI_Reduce(partial_c, partial_c_sum, s, MPI_INT, MPI_SUM, global_min.rank % q, comm_row);
 
-		MPI_Gather(partial_res, s, MPI_INT, res, 1, rearranged_vec_type, min_global.rank / q, col_comm);
+	if (rank_row == global_min.rank % q) {
+		MPI_Datatype recv_type, recv_type_extended;
+		MPI_Type_vector(s, 1, q, MPI_INT, &recv_type);
+		MPI_Type_create_resized(recv_type, 0, sizeof(int), &recv_type_extended);
+		MPI_Type_commit(&recv_type_extended);
+
+		MPI_Gather(partial_c_sum, s, MPI_INT, c, 1, recv_type_extended, global_min.rank / q, comm_col);
 	}
 
-	if (rank == min_global.rank) {
-		MPI_Send(res, k, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
+	if (rank == global_min.rank) {
+		std::cout << "C:\n";
+		print_matrix(c, 1, k);
+		std::cout << (check_result(a, b, c, k) ? "CORRECT" : "INCORRECT") << "\n";
 	}
 
-	if (rank == MASTER) {
-		MPI_Recv(res, k, MPI_INT, min_global.rank, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-		if (check_result(A, b, res, k)) {
-			printf("\n\nCORRECT\n\n");
-		}
-		else {
-			printf("\n\nINCORRECT\n\n");
-		}
-	}
-
-	delete[] A;
+	delete[] a;
 	delete[] b;
 	delete[] c;
+	delete[] tile_a;
+	delete[] partial_b;
+	delete[] partial_c;
+	delete[] partial_c_sum;
 
 	MPI_Finalize();
 }
