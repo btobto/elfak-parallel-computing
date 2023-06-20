@@ -48,12 +48,17 @@ int main(int argc, char** argv)
 	for (
 		int d = 0, l = 1;
 		d < n; 
-		d = displacements.back() + block_lengths.back() * size, l++
+		d = displacements.back() + rank + l * size, l++
 	) {
 		block_lengths.push_back(l);
 		displacements.push_back(d);
 	}
 	int count = block_lengths.size();
+
+	if (rank == 0)
+		for (int i = 0; i < count; i++) {
+			printf("D: %d BL:%d\n", displacements[i], block_lengths[i]);
+		}
 
 	MPI_Datatype file_type;
 	MPI_Type_indexed(count, block_lengths.data(), displacements.data(), MPI_INT, &file_type);
