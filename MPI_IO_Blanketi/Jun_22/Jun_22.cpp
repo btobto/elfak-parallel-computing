@@ -11,13 +11,6 @@ int main(int argc, char** argv)
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-	//constexpr int n = 10;
-	//char text[n];
-
-	//for (int i = 0; i < n; i++) {
-	//	text[i] = rank + i + '0';
-	//}
-
 	auto file1 = "file1.txt";
 	auto file2 = "file2.txt";
 	constexpr int n = 4;
@@ -35,11 +28,6 @@ int main(int argc, char** argv)
 	MPI_File_open(MPI_COMM_WORLD, file1, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
 	MPI_File_read_shared(fh, text, n, MPI_CHAR, MPI_STATUS_IGNORE);
 	MPI_File_close(&fh);
-
-	//printf("Rank: %d\n", rank);
-	//for (int i = 0; i < n; i++) {
-	//	printf("%c", text[i]);
-	//}
 
 	// 3.
 	printf("Rank: %d\n", rank);
