@@ -50,7 +50,6 @@ int main(int argc, char** argv)
 	int* partial_c = new int[s];
 	int* partial_c_sum = new int[s];
 
-
 	if (rank == root) {
 		for (int i = 0; i < k * k; i++) {
 			a[i] = i;
