@@ -55,10 +55,10 @@ int main(int argc, char** argv)
 	}
 	int count = block_lengths.size();
 
-	if (rank == 0)
-		for (int i = 0; i < count; i++) {
-			printf("D: %d BL:%d\n", displacements[i], block_lengths[i]);
-		}
+	//if (rank == 0)
+	//	for (int i = 0; i < count; i++) {
+	//		printf("D: %d BL:%d\n", displacements[i], block_lengths[i]);
+	//	}
 
 	MPI_Datatype file_type;
 	MPI_Type_indexed(count, block_lengths.data(), displacements.data(), MPI_INT, &file_type);
