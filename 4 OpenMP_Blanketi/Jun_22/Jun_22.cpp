@@ -45,17 +45,18 @@ int main()
 	end = omp_get_wtime();
 	std::cout << "Parallel: " << end - start << "s\n";
 
-	bool match = true;
-	for (int i = 0; i < n; i++) {
-		if (
-			x_seq[i] != x_par[i] ||
-			y_seq[i] != y_par[i]
-			) 
-		{
-			match = false;
-			break;
+	bool match = g_seq == g_par;
+	if (match) {
+		for (int i = 0; i < n; i++) {
+			if (
+				x_seq[i] != x_par[i] ||
+				y_seq[i] != y_par[i]
+				)
+			{
+				match = false;
+				break;
+			}
 		}
 	}
-	match = match && g_seq == g_par;
 	std::cout << (match ? "CORRECT" : "INCORRECT") << "\n";
 }
